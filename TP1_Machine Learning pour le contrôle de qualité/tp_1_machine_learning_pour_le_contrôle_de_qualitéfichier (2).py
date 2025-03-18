@@ -235,10 +235,6 @@ df.to_csv("balanced_data.csv", index=False)
 
 print("\nDonnées équilibrées sauvegardées dans 'balanced_data.csv'")
 
-# prompt: maintennat on va prendre la derniere base de donne  : balanced_data.csv
-# et on va faire le redimensionnement par la corrélation et la variance
-# fait une etude de corrélation et les features qui sont les plus collorée on v supprimer l'une et laisser l'autre
-
 import pandas as pd
 
 # Charger les données équilibrées
@@ -333,3 +329,205 @@ print("Valeurs minimales après standardisation :")
 print(X_scaled.min())
 print("\nValeurs maximales après standardisation :")
 print(X_scaled.max())
+
+# Ajouter la colonne cible (Y) aux données standardisées
+df_scaled = X_scaled.copy()
+df_scaled['Pass/Fail'] = Y
+
+# Sauvegarder le dataframe dans un fichier CSV
+output_file = "/content/standardized_data.csv"
+df_scaled.to_csv(output_file, index=False)
+
+print("="*40)
+print(f" Fichier sauvegardé sous : {output_file} ")
+print("="*40)
+
+# 5. Visualisation des données
+
+import pandas as pd
+# Charger les données (assurez-vous que le chemin est correct)
+file_path = "/content/reduced_data.csv"
+df = pd.read_csv(file_path)
+
+# Calculer la matrice de corrélation
+correlation_matrix = df.corr()
+
+# Afficher la matrice de corrélation
+print("Matrice de corrélation :")
+print(correlation_matrix)
+
+# Visualiser la matrice de corrélation avec une heatmap
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+plt.figure(figsize=(12, 10))
+sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt=".2f")
+plt.title('Matrice de corrélation')
+plt.show()
+
+# Identifier les valeurs aberrantes (par exemple, en utilisant la méthode des boîtes à moustaches)
+for column in df.select_dtypes(include=['number']).columns:
+  plt.figure()
+  sns.boxplot(x=df[column])
+  plt.title(f"Boîte à moustaches pour la variable {column}")
+  plt.show()
+
+
+# Analyse de linéarité (par exemple, en utilisant des nuages de points)
+for column in df.select_dtypes(include=['number']).columns:
+  plt.figure()
+  plt.scatter(df[column], df['Pass/Fail'])
+  plt.title(f"Nuage de points entre {column} et Pass/Fail")
+  plt.xlabel(column)
+  plt.ylabel('Pass/Fail')
+  plt.show()
+
+# 1. Tester le modèle de  L’arbre de décision
+
+import pandas as pd
+# Importer les bibliothèques nécessaires
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+
+# Charger les données prétraitées
+file_path = "/content/standardized_data.csv"
+df = pd.read_csv(file_path)
+
+# Séparer les features (X) et la cible (Y)
+X = df.drop(columns=['Pass/Fail'])
+Y = df['Pass/Fail']
+
+# Diviser les données en ensembles d'entraînement et de test
+X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
+
+# Créer un modèle d'arbre de décision
+decision_tree_model = DecisionTreeClassifier()
+
+# Entraîner le modèle sur les données d'entraînement
+decision_tree_model.fit(X_train, Y_train)
+
+# Faire des prédictions sur les données de test
+Y_pred = decision_tree_model.predict(X_test)
+
+# Évaluer les performances du modèle
+accuracy = accuracy_score(Y_test, Y_pred)
+print("Précision du modèle d'arbre de décision:", accuracy)
+
+# Afficher le rapport de classification
+print("\nRapport de classification:")
+print(classification_report(Y_test, Y_pred))
+
+# Afficher la matrice de confusion
+print("\nMatrice de confusion:")
+print(confusion_matrix(Y_test, Y_pred))
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import (accuracy_score, classification_report, confusion_matrix,
+                             precision_score, recall_score, f1_score, roc_curve, roc_auc_score)
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout
+from tensorflow.keras.optimizers import Adam
+
+# Charger les données standardisées (ou non standardisées)
+file_path = "/content/standardized_data.csv"  # Ou "/content/reduced_data.csv"
+df = pd.read_csv(file_path)
+
+# Séparer les features (X) et la cible (Y)
+X = df.drop(columns=['Pass/Fail'])
+Y = df['Pass/Fail']
+
+# Encoder la cible (Pass/Fail) en valeurs numériques (0 et 1)
+label_encoder = LabelEncoder()
+Y = label_encoder.fit_transform(Y)  # Pass -> 1, Fail -> 0
+
+# Diviser les données en ensembles d'entraînement et de test
+X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
+
+# Créer le modèle de réseau de neurones
+model = Sequential([
+    Dense(64, activation='relu', input_shape=(X_train.shape[1],)),  # Couche d'entrée
+    Dropout(0.2),  # Dropout pour éviter le surapprentissage
+    Dense(32, activation='relu'),  # Couche cachée
+    Dropout(0.2),
+    Dense(1, activation='sigmoid')  # Couche de sortie (classification binaire)
+])
+
+# Compiler le modèle
+model.compile(optimizer=Adam(learning_rate=0.001),
+              loss='binary_crossentropy',  # Fonction de perte pour la classification binaire
+              metrics=['accuracy'])
+
+# Afficher un résumé du modèle
+model.summary()
+
+# Entraîner le modèle
+history = model.fit(X_train, Y_train, epochs=20, batch_size=32, validation_split=0.2, verbose=1)
+
+# Faire des prédictions sur les données de test
+Y_pred_proba = model.predict(X_test)  # Probabilités prédites
+Y_pred = (Y_pred_proba > 0.5).astype(int)  # Convertir en classes (0 ou 1)
+
+# Évaluer les performances du modèle
+accuracy = accuracy_score(Y_test, Y_pred)
+precision = precision_score(Y_test, Y_pred)
+recall = recall_score(Y_test, Y_pred)
+f1 = f1_score(Y_test, Y_pred)
+
+# Afficher les métriques
+print("="*40)
+print(" Évaluation du réseau de neurones ")
+print("="*40)
+print(f"Accuracy: {accuracy:.4f}")
+print(f"Précision: {precision:.4f}")
+print(f"Rappel: {recall:.4f}")
+print(f"Score F1: {f1:.4f}")
+
+# Afficher le rapport de classification
+print("\nRapport de classification:")
+print(classification_report(Y_test, Y_pred))
+
+# Afficher la matrice de confusion
+print("\nMatrice de confusion:")
+print(confusion_matrix(Y_test, Y_pred))
+
+# Calculer la courbe ROC et l'AUC
+fpr, tpr, thresholds = roc_curve(Y_test, Y_pred_proba)
+roc_auc = roc_auc_score(Y_test, Y_pred_proba)
+
+# Afficher la courbe ROC
+plt.figure(figsize=(8, 6))
+plt.plot(fpr, tpr, color='blue', lw=2, label=f'Courbe ROC (AUC = {roc_auc:.2f})')
+plt.plot([0, 1], [0, 1], color='gray', linestyle='--')
+plt.xlabel('Taux de faux positifs (FPR)')
+plt.ylabel('Taux de vrais positifs (TPR)')
+plt.title('Courbe ROC')
+plt.legend(loc='lower right')
+plt.show()
+
+# Afficher l'historique de l'entraînement (loss et accuracy)
+plt.figure(figsize=(12, 5))
+
+# Loss
+plt.subplot(1, 2, 1)
+plt.plot(history.history['loss'], label='Loss (entraînement)')
+plt.plot(history.history['val_loss'], label='Loss (validation)')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.title('Évolution de la Loss')
+plt.legend()
+
+# Accuracy
+plt.subplot(1, 2, 2)
+plt.plot(history.history['accuracy'], label='Accuracy (entraînement)')
+plt.plot(history.history['val_accuracy'], label='Accuracy (validation)')
+plt.xlabel('Epochs')
+plt.ylabel('Accuracy')
+plt.title('Évolution de l\'Accuracy')
+plt.legend()
+
+plt.show()
